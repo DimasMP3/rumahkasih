@@ -37,7 +37,7 @@ export default function HomePage() {
       <AboutSection />
       <GallerySection />
       <DonationSection handleNavigate={handleNavigate} />
-      <Footer handleNavigate={handleNavigate} />
+      <Footer />
     </main>
   );
 }
