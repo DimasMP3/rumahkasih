@@ -86,3 +86,66 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Database Setup and Midtrans Integration
+
+### Environment Variables
+To run this application, you need to create a `.env.local` file with the following variables:
+
+```bash
+# Database (Supabase)
+DIRECT_URL=your_supabase_direct_url_here
+DATABASE_URL=your_supabase_database_url_here
+
+# Midtrans API Keys (Sandbox)
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=your_midtrans_client_key_here
+MIDTRANS_SERVER_KEY=your_midtrans_server_key_here
+
+# Set to false in production
+IS_MIDTRANS_SANDBOX=true
+```
+
+### Running Migrations
+
+After setting up your environment variables, run the following commands to apply database migrations:
+
+```
+npx drizzle-kit generate
+npx drizzle-kit push:pg
+```
+
+### Database Schema
+
+The donation schema includes the following tables:
+
+#### Users Table
+- `id` - Primary key
+- `fullName` - User's full name
+- `phone` - User's phone number
+
+#### Donations Table
+- `id` - Primary key
+- `amount` - Donation amount
+- `name` - Donor's name
+- `email` - Donor's email
+- `orderId` - Unique order ID for Midtrans
+- `transactionId` - Transaction ID from Midtrans
+- `paymentMethod` - Payment method (credit-card, bank-transfer, ewallet, etc.)
+- `paymentType` - Specific payment type from Midtrans
+- `paymentStatus` - Status of payment (pending, success, failed, expired, cancel, deny, challenge)
+- `paymentDetails` - Additional payment details
+- `createdAt` - Timestamp when donation was created
+- `updatedAt` - Timestamp when donation was last updated
+- `isRecurring` - Boolean indicating whether this is a recurring donation
+- `message` - Optional message from the donor
+
+### Midtrans Integration
+
+This project uses Midtrans as the payment gateway. Follow these steps to integrate:
+
+1. Sign up for a Midtrans account at [https://midtrans.com/](https://midtrans.com/)
+2. Get your Client Key and Server Key from the Midtrans Dashboard
+3. Add these keys to your `.env.local` file
+4. For production, set `IS_MIDTRANS_SANDBOX=false` and update the keys
+
+For more information, refer to the [Midtrans documentation](https://docs.midtrans.com/).

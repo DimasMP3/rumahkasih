@@ -5,6 +5,7 @@ import { ArrowLeft, CreditCard, Landmark, Wallet, Heart, CheckCircle } from 'luc
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from 'next/navigation';
 import { useLoading } from '../providers/LoadingProvider';
+import { openMidtransSnap } from '@/lib/midtrans';
 
 export const DonationForm = () => {
   const router = useRouter();
@@ -16,6 +17,8 @@ export const DonationForm = () => {
     name: '',
     email: ''
   });
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     // Matikan loading state setelah halaman dimuat
@@ -46,6 +49,7 @@ export const DonationForm = () => {
       name: '',
       email: ''
     });
+    setError(null);
   };
 
   const presetAmounts = [50000, 100000, 250000, 500000];
@@ -71,24 +75,62 @@ export const DonationForm = () => {
     }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const donorData = {
-      amount,
-      name: formData.name,
-      email: formData.email,
-      paymentMethod: selectedPayment,
-    };
-    console.log(donorData);
     
-    // Show thank you notification and reset form
-    setShowThankYou(true);
-    resetForm();
+    if (!formData.name || !formData.email || !amount) {
+      setError('Semua field wajib diisi');
+      return;
+    }
     
-    // Hide notification after 3 seconds
-    setTimeout(() => {
-      setShowThankYou(false);
-    }, 3000);
+    try {
+      setProcessingPayment(true);
+      setError(null);
+      
+      // Send donation data to server to create Midtrans transaction
+      const response = await fetch('/api/donation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          amount,
+          paymentMethod: selectedPayment,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Terjadi kesalahan saat memproses donasi');
+      }
+      
+      const { token } = await response.json();
+      
+      if (!token) {
+        throw new Error('Token pembayaran tidak ditemukan');
+      }
+      
+      // Open Midtrans Snap payment page
+      const result = await openMidtransSnap(token);
+      console.log('Payment result:', result);
+      
+      // Show success message for successful or pending payments
+      setShowThankYou(true);
+      resetForm();
+      
+      // Hide notification after 5 seconds
+      setTimeout(() => {
+        setShowThankYou(false);
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat memproses pembayaran');
+    } finally {
+      setProcessingPayment(false);
+    }
   };
 
   return (
@@ -217,6 +259,12 @@ export const DonationForm = () => {
           </p>
         </div>
 
+        {error && (
+          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleFormSubmit} className="space-y-8">
           {/* STEP 1: Jumlah Donasi */}
           <div>
@@ -287,53 +335,17 @@ export const DonationForm = () => {
             </div>
           </div>
 
-          {/* STEP 3: Metode Pembayaran */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-3">
-              3. Pilih Metode Pembayaran
-            </label>
-            <div className="space-y-3">
-              {paymentMethods.map((method) => (
-                <label 
-                  key={method.id}
-                  className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedPayment === method.id 
-                      ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' 
-                      : 'border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={method.id}
-                    checked={selectedPayment === method.id}
-                    onChange={() => setSelectedPayment(method.id)}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center flex-grow">
-                    {method.icon}
-                    <span className="font-medium text-slate-800">{method.label}</span>
-                  </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    selectedPayment === method.id 
-                      ? 'border-orange-500' 
-                      : 'border-slate-300'
-                  }`}>
-                    {selectedPayment === method.id && (
-                      <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+         
 
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all transform hover:-translate-y-1"
+            disabled={processingPayment}
+            className={`w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all transform hover:-translate-y-1 ${
+              processingPayment ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
-            Lanjutkan Donasi
+            {processingPayment ? 'Memproses...' : 'Lanjutkan Donasi'}
           </button>
         </form>
       </motion.div>
