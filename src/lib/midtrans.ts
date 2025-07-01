@@ -44,8 +44,22 @@ export const generateOrderId = (): string => {
   return `DONATION-${timestamp}-${randomNum}`;
 };
 
+// Define types for Midtrans response
+export type MidtransResult = {
+  status_code: string;
+  status_message: string;
+  transaction_id: string;
+  order_id: string;
+  gross_amount: string;
+  payment_type: string;
+  transaction_time: string;
+  transaction_status: string;
+  fraud_status?: string;
+  [key: string]: unknown; // For any additional properties that might be returned
+};
+
 // Function to open Midtrans Snap payment page
-export const openMidtransSnap = async (transactionToken: string): Promise<any> => {
+export const openMidtransSnap = async (transactionToken: string): Promise<MidtransResult> => {
   await initMidtransSnap();
   
   return new Promise((resolve, reject) => {
@@ -55,13 +69,13 @@ export const openMidtransSnap = async (transactionToken: string): Promise<any> =
     }
 
     window.snap.pay(transactionToken, {
-      onSuccess: function(result: any) {
+      onSuccess: function(result: MidtransResult) {
         resolve(result);
       },
-      onPending: function(result: any) {
+      onPending: function(result: MidtransResult) {
         resolve(result);
       },
-      onError: function(result: any) {
+      onError: function(result: MidtransResult) {
         reject(result);
       },
       onClose: function() {
@@ -71,11 +85,19 @@ export const openMidtransSnap = async (transactionToken: string): Promise<any> =
   });
 };
 
+// Define type for Midtrans Snap options
+type MidtransSnapOptions = {
+  onSuccess: (result: MidtransResult) => void;
+  onPending: (result: MidtransResult) => void;
+  onError: (result: MidtransResult) => void;
+  onClose: () => void;
+};
+
 // Add TypeScript interface for window object to include snap
 declare global {
   interface Window {
     snap?: {
-      pay: (token: string, options: any) => void;
+      pay: (token: string, options: MidtransSnapOptions) => void;
     };
   }
 } 
