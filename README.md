@@ -1,122 +1,50 @@
 # Rumah Kasihku
 
-Rumah Kasihku adalah situs web panti asuhan yang dibuat dengan Next.js, React, Tailwind CSS, dan Framer Motion. Situs web ini menyediakan informasi tentang panti asuhan, galeri kegiatan, dan formulir donasi.
+## Description
+Rumah Kasihku is a charity website for an orphanage built with modern web technologies. The platform provides information about the orphanage, showcases activities through a gallery, and features a donation system integrated with Midtrans payment gateway to facilitate financial support for the children.
 
-## Struktur Folder
+## Technologies Used
+- **Next.js**: React framework for server-rendered applications
+- **React**: JavaScript library for building user interfaces
+- **TypeScript**: Typed JavaScript for enhanced code quality
+- **Tailwind CSS**: Utility-first CSS framework
+- **Framer Motion**: Animation library for React
+- **Drizzle ORM**: TypeScript ORM for SQL databases
+- **Supabase**: PostgreSQL database provider
+- **Midtrans**: Payment gateway integration for donations
 
-```
-src/
-  ├── app/                    # Direktori aplikasi Next.js
-  │   ├── donate/            # Halaman donasi
-  │   ├── globals.css        # CSS global
-  │   ├── layout.tsx         # Layout utama
-  │   └── page.tsx           # Halaman utama
-  │
-  ├── components/             # Komponen terorganisir
-  │   ├── donate/            # Komponen untuk halaman donasi 
-  │   ├── home/              # Komponen untuk halaman utama
-  │   ├── layout/            # Komponen tata letak (header, footer)
-  │   ├── providers/         # Konteks dan penyedia
-  │   ├── ui/                # Komponen UI yang dapat digunakan kembali
-  │   └── index.ts           # File ekspor komponen
-  │
-  └── lib/                    # Utilitas dan helper
-      └── utils.ts           # Fungsi utilitas
-```
+## Features
+1. **Responsive Design**: Optimized for all device sizes
+2. **Interactive Homepage**:
+   - Hero section with engaging visuals
+   - About section detailing the orphanage's mission
+   - Gallery showcasing children's activities
+   - Donation section with quick access to contribute
+3. **Donation System**:
+   - User-friendly donation form
+   - Multiple payment method options (bank transfer, e-wallet, QRIS)
+   - Secure payment processing
+   - Donation tracking and management
+4. **Smooth Animations**: Enhanced user experience with Framer Motion
+5. **Database Integration**: Structured data storage for donations and user information
 
-## Teknologi yang Digunakan
+## Setup Instructions
 
-- **Next.js**: Framework React untuk pengembangan web
-- **React**: Pustaka JavaScript untuk membangun antarmuka pengguna
-- **Tailwind CSS**: Framework CSS untuk styling yang cepat
-- **Framer Motion**: Pustaka animasi untuk React
-- **TypeScript**: Superset dari JavaScript dengan pengetikan statis
-
-## Fitur Utama
-
-1. **Halaman Utama**: Menampilkan informasi tentang panti asuhan, galeri, dan bagian donasi
-2. **Formulir Donasi**: Formulir interaktif untuk menerima donasi
-3. **Animasi**: Animasi halus menggunakan Framer Motion
-4. **Responsif**: Desain yang responsif untuk semua ukuran perangkat
-
-## Pengembangan
-
-Untuk menjalankan proyek ini secara lokal:
-
-1. Clone repositori
-2. Instal dependensi: `npm install`
-3. Jalankan server pengembangan: `npm run dev`
-4. Buka `http://localhost:3000` di browser Anda
-
-## Kontributor
-
-- Developer Tim Rumah Kasihku
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deployment
-
-This application uses Next.js and is deployed with Vercel.
+### Prerequisites
+- Node.js 16.x or higher
+- npm or yarn package manager
+- Supabase account
+- Midtrans account
 
 ### Environment Variables
-
-**Important:** You must configure the following environment variables in your Vercel project settings:
-
-- `DIRECT_URL` - PostgreSQL database connection string
-- `MIDTRANS_CLIENT_KEY` - Your Midtrans client key
-- `MIDTRANS_SERVER_KEY` - Your Midtrans server key 
-- `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` - Same as MIDTRANS_CLIENT_KEY, but exposed to the client
-- `MIDTRANS_IS_PRODUCTION` - Set to 'false' for sandbox or 'true' for production
-
-Without these environment variables, the build will fail.
-
-## ESLint
-
-This project uses ESLint for code quality. Some rules have been disabled to allow the project to build successfully:
-
-- `@typescript-eslint/no-unused-vars` - Disabled to prevent build failures from unused variables
-- `@typescript-eslint/no-explicit-any` - Disabled to allow the use of `any` type in specific circumstances
-
-Consider addressing these issues properly in the future for better code quality.
-
-## Database Setup and Midtrans Integration
-
-### Environment Variables
-To run this application, you need to create a `.env.local` file with the following variables:
+Create a `.env.local` file with the following variables:
 
 ```bash
 # Database (Supabase)
 DIRECT_URL=your_supabase_direct_url_here
 DATABASE_URL=your_supabase_database_url_here
 
-# Midtrans API Keys (Sandbox)
+# Midtrans API Keys
 NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=your_midtrans_client_key_here
 MIDTRANS_SERVER_KEY=your_midtrans_server_key_here
 
@@ -124,25 +52,68 @@ MIDTRANS_SERVER_KEY=your_midtrans_server_key_here
 IS_MIDTRANS_SANDBOX=true
 ```
 
-### Running Migrations
+### Installation
 
-After setting up your environment variables, run the following commands to apply database migrations:
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/rumahkasihku.git
+   cd rumahkasihku
+   ```
 
-```
-npx drizzle-kit generate
-npx drizzle-kit push:pg
-```
+2. Install dependencies
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-### Database Schema
+3. Set up the database
+   ```bash
+   npx drizzle-kit generate
+   npx drizzle-kit push:pg
+   ```
 
-The donation schema includes the following tables:
+4. Start the development server
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-#### Users Table
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## AI Support
+Rumah Kasihku leverages AI technology in several ways to enhance the platform:
+
+1. **Content Generation**: AI assists in creating compelling content for the website, ensuring the message about the orphanage's mission is clear and impactful.
+
+2. **Image Optimization**: The gallery images are processed using AI to ensure optimal quality and loading performance.
+
+3. **Form Assistance**: The donation form utilizes AI to provide smart suggestions and validation, making the donation process more intuitive.
+
+4. **Personalization**: AI helps tailor the user experience based on visitor interaction patterns, showing the most relevant content.
+
+5. **Analytics**: AI-powered analytics provide insights into donation patterns and website usage to continuously improve the platform.
+
+## Deployment
+
+This application is deployed with Vercel. For production deployment, update the following environment variables in your Vercel project settings:
+
+- `DIRECT_URL` - PostgreSQL database connection string
+- `DATABASE_URL` - Supabase connection string
+- `MIDTRANS_CLIENT_KEY` - Your Midtrans client key
+- `MIDTRANS_SERVER_KEY` - Your Midtrans server key 
+- `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` - Same as MIDTRANS_CLIENT_KEY, but exposed to the client
+- `IS_MIDTRANS_SANDBOX` - Set to 'false' for production
+
+## Database Schema
+
+### Users Table
 - `id` - Primary key
 - `fullName` - User's full name
 - `phone` - User's phone number
 
-#### Donations Table
+### Donations Table
 - `id` - Primary key
 - `amount` - Donation amount
 - `name` - Donor's name
@@ -158,13 +129,5 @@ The donation schema includes the following tables:
 - `isRecurring` - Boolean indicating whether this is a recurring donation
 - `message` - Optional message from the donor
 
-### Midtrans Integration
-
-This project uses Midtrans as the payment gateway. Follow these steps to integrate:
-
-1. Sign up for a Midtrans account at [https://midtrans.com/](https://midtrans.com/)
-2. Get your Client Key and Server Key from the Midtrans Dashboard
-3. Add these keys to your `.env.local` file
-4. For production, set `IS_MIDTRANS_SANDBOX=false` and update the keys
-
-For more information, refer to the [Midtrans documentation](https://docs.midtrans.com/).
+## Contributors
+- Developer Team Rumah Kasihku
