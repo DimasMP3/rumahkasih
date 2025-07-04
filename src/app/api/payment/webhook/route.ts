@@ -11,12 +11,13 @@ import postgres from 'postgres';
 let pgClient: ReturnType<typeof postgres> | null = null;
 if (process.env.DIRECT_URL) {
   pgClient = postgres(process.env.DIRECT_URL);
-  console.log('pgClient', pgClient);
+  console.log('Database connection established with pgClient');
 }
 
 // Map Midtrans transaction status to our payment status enum
 const mapTransactionStatus = (transaction_status: string, fraud_status?: string): string => {
   // Valid statuses in our system: 'pending', 'success', 'failed', 'expired', 'cancel', 'deny', 'challenge'
+  console.log(`Mapping transaction status: ${transaction_status}, fraud status: ${fraud_status}`);
   switch (transaction_status) {
     case 'capture':
       return fraud_status === 'accept' ? 'success' : (fraud_status === 'challenge' ? 'challenge' : 'pending');
@@ -39,17 +40,22 @@ const mapTransactionStatus = (transaction_status: string, fraud_status?: string)
 
 // Handle webhook notifikasi dari Midtrans
 export async function POST(req: NextRequest) {
-  console.log('---------------------------------------------------');
+  console.log('======================================================');
   console.log('WEBHOOK RECEIVED: ' + new Date().toISOString());
   
   try {
-    // Skip signature verification to prevent errors
-    // Uncomment the next lines if you want to re-enable signature verification
-    // const isRequestValid = await verifyMidtransSignature(req);
-    // if (!isRequestValid && process.env.NODE_ENV === 'production') {
-    //   console.error('Invalid webhook signature');
-    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    // }
+    // Enable signature verification for production
+    if (process.env.NODE_ENV === 'production' && process.env.BYPASS_WEBHOOK_VERIFICATION !== 'true') {
+      console.log('Verifying webhook signature...');
+      const isRequestValid = await verifyMidtransSignature(req);
+      if (!isRequestValid) {
+        console.error('Invalid webhook signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+      console.log('Webhook signature valid');
+    } else {
+      console.log('Webhook signature verification bypassed');
+    }
     
     // Get body and validate
     const clonedReq = req.clone();
@@ -107,96 +113,11 @@ export async function POST(req: NextRequest) {
       webhook_received_at: new Date().toISOString()
     });
     
-    // TRY METHOD 1: Direct SQL update using the pgClient
-    if (pgClient) {
-      try {
-        console.log(`WEBHOOK: Trying direct SQL update for order ${order_id}`);
-        const result = await pgClient`
-          UPDATE donations 
-          SET 
-            payment_status = ${paymentStatus}::payment_status,
-            transaction_id = ${transaction_id},
-            payment_type = ${payment_type},
-            payment_details = ${paymentDetails},
-            updated_at = NOW()
-          WHERE order_id = ${order_id}
-          RETURNING id, payment_status
-        `;
-        
-        if (result && result.length > 0) {
-          console.log(`WEBHOOK: Direct SQL update successful. Payment status: ${result[0].payment_status}`);
-          
-          // If payment is successful, trigger any additional processes
-          if (paymentStatus === 'success') {
-            console.log(`WEBHOOK: Payment successful for order ${order_id}. Triggering success processes.`);
-            // Example: await sendThankYouEmail(order_id);
-          }
-          
-          return NextResponse.json({ 
-            success: true,
-            order_id,
-            status: paymentStatus
-          });
-        } else {
-          console.warn(`WEBHOOK: Direct SQL update failed - no rows updated. Moving to method 2.`);
-        }
-      } catch (sqlError) {
-        console.error(`WEBHOOK ERROR: Direct SQL update failed:`, sqlError);
-        // Continue to method 2
-      }
-    }
+    console.log(`WEBHOOK: Attempting to update database for order ${order_id}`);
     
-    // TRY METHOD 2: Use drizzle's sql tag
+    // SIMPLIFIED UPDATE APPROACH: Use only one reliable method
     try {
-      console.log(`WEBHOOK: Trying drizzle SQL update for order ${order_id}`);
-      const result = await db.execute(sql`
-        UPDATE "donations"
-        SET 
-          "payment_status" = ${paymentStatus}::payment_status,
-          "transaction_id" = ${transaction_id},
-          "payment_type" = ${payment_type},
-          "payment_details" = ${paymentDetails},
-          "updated_at" = NOW()
-        WHERE "order_id" = ${order_id}
-        RETURNING "id", "payment_status"
-      `);
-      
-      console.log('Drizzle SQL update result:', result);
-      
-      // Verify update by checking the database
-      const updatedDonation = await db.select()
-        .from(donations)
-        .where(eq(donations.orderId, order_id))
-        .limit(1);
-      
-      if (updatedDonation && updatedDonation.length > 0) {
-        console.log(`WEBHOOK: Verified update - new payment status: ${updatedDonation[0].paymentStatus}`);
-        
-        // If payment is successful, trigger any additional processes
-        if (paymentStatus === 'success') {
-          console.log(`WEBHOOK: Payment successful for order ${order_id}. Triggering success processes.`);
-          // Example: await sendThankYouEmail(order_id);
-        }
-        
-        return NextResponse.json({ 
-          success: true,
-          order_id,
-          status: paymentStatus,
-          verified_status: updatedDonation[0].paymentStatus
-        });
-      } else {
-        console.warn(`WEBHOOK WARNING: Update could not be verified. Moving to method 3.`);
-      }
-    } catch (drizzleError) {
-      console.error(`WEBHOOK ERROR: Drizzle SQL update failed:`, drizzleError);
-      // Continue to method 3
-    }
-    
-    // TRY METHOD 3: Use drizzle's update method
-    try {
-      console.log(`WEBHOOK: Trying drizzle update method for order ${order_id}`);
-      
-      // Get existing record to see current status
+      // First check if the order exists
       const existing = await db.select()
         .from(donations)
         .where(eq(donations.orderId, order_id))
@@ -209,8 +130,8 @@ export async function POST(req: NextRequest) {
       
       console.log(`WEBHOOK: Current payment status for ${order_id}: ${existing[0].paymentStatus}`);
       
-      // Use the enum value directly without casting
-      const updateResult = await db.update(donations)
+      // Use drizzle's update method
+      await db.update(donations)
         .set({
           paymentStatus: paymentStatus as any, // Force the type
           transactionId: transaction_id,
@@ -220,7 +141,7 @@ export async function POST(req: NextRequest) {
         })
         .where(eq(donations.orderId, order_id));
       
-      console.log(`WEBHOOK: Drizzle update result:`, updateResult);
+      console.log(`WEBHOOK: Database update attempted for order ${order_id}`);
       
       // Verify the update
       const updatedDonation = await db.select()
@@ -244,13 +165,13 @@ export async function POST(req: NextRequest) {
           verified_status: updatedDonation[0].paymentStatus
         });
       } else {
-        console.error(`WEBHOOK ERROR: All update methods failed`);
-        return NextResponse.json({ error: 'Failed to update donation status' }, { status: 500 });
+        console.error(`WEBHOOK ERROR: Update verification failed`);
+        return NextResponse.json({ error: 'Failed to verify donation update' }, { status: 500 });
       }
     } catch (error) {
-      console.error(`WEBHOOK ERROR: All methods failed:`, error);
+      console.error(`WEBHOOK ERROR: Database update failed:`, error);
       return NextResponse.json({ 
-        error: 'All update methods failed',
+        error: 'Failed to update donation',
         details: error instanceof Error ? error.message : String(error)
       }, { status: 500 });
     }
@@ -261,7 +182,7 @@ export async function POST(req: NextRequest) {
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   } finally {
-    console.log('---------------------------------------------------');
+    console.log('======================================================');
   }
 }
 
@@ -341,31 +262,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
       }
       
-      // Try direct SQL update first
-      if (pgClient) {
-        try {
-          const result = await pgClient`
-            UPDATE donations
-            SET payment_status = ${status}::payment_status,
-                updated_at = NOW()
-            WHERE order_id = ${orderId}
-            RETURNING id, payment_status
-          `;
-          
-          if (result && result.length > 0) {
-            console.log(`Direct update successful: ${result[0].payment_status}`);
-            return NextResponse.json({
-              success: true,
-              message: `Directly updated payment status to ${status}`,
-              status: result[0].payment_status
-            });
-          }
-        } catch (e) {
-          console.error('Direct SQL update failed:', e);
-        }
-      }
-      
-      // Fall back to drizzle update
+      // Use drizzle update
       const updateResult = await db.update(donations)
         .set({
           paymentStatus: status as any, // Force the type
@@ -488,29 +385,13 @@ export async function GET(req: NextRequest) {
       - ?action=expire&order_id=YOUR_ORDER_ID - Simulate expired payment
       - ?action=deny&order_id=YOUR_ORDER_ID - Simulate denied payment
       - ?action=cancel&order_id=YOUR_ORDER_ID - Simulate cancelled payment
-      
-      Webhook signature verification:
-      - Signature verification is currently disabled by default
-      - To re-enable it, uncomment the verification code in the POST handler
-      - Set BYPASS_WEBHOOK_VERIFICATION=true in your environment variables to bypass signature checks
     `
   });
 }
 
 // Verify the Midtrans webhook signature
-async function verifyMidtransSignature(req: NextRequest): Promise<boolean> {
+export async function verifyMidtransSignature(req: NextRequest): Promise<boolean> {
   try {
-    // Only in development, we can skip verification
-    if (process.env.NODE_ENV === 'development') {
-      return true;
-    }
-    
-    // Skip verification if BYPASS_WEBHOOK_VERIFICATION is set to true
-    if (process.env.BYPASS_WEBHOOK_VERIFICATION === 'true') {
-      console.log('Webhook signature verification bypassed');
-      return true;
-    }
-    
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
       console.error('MIDTRANS_SERVER_KEY not configured');
@@ -518,16 +399,16 @@ async function verifyMidtransSignature(req: NextRequest): Promise<boolean> {
     }
     
     // Get signature from headers - try multiple possible header names
-    // Different payment gateways use different header names for signatures
     const signatureKey = req.headers.get('X-Signature-Key') || 
-                         req.headers.get('x-signature') ||
-                         req.headers.get('signature-key') ||
-                         req.headers.get('X-Callback-Signature') ||
-                         req.headers.get('x-callback-signature');
-                         
+                       req.headers.get('x-signature') ||
+                       req.headers.get('signature-key') ||
+                       req.headers.get('X-Callback-Signature') ||
+                       req.headers.get('x-callback-signature');
+                       
+    console.log('Headers received:', Object.fromEntries(req.headers.entries()));
+                       
     if (!signatureKey) {
-      console.log('Headers received:', Object.fromEntries(req.headers.entries()));
-      console.error('Missing signature header. Configure BYPASS_WEBHOOK_VERIFICATION=true to bypass this check.');
+      console.error('Missing signature header');
       return false;
     }
     
