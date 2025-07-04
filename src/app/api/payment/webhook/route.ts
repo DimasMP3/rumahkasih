@@ -390,7 +390,7 @@ export async function GET(req: NextRequest) {
 }
 
 // Verify the Midtrans webhook signature
-export async function verifyMidtransSignature(req: NextRequest): Promise<boolean> {
+async function verifyMidtransSignature(req: NextRequest): Promise<boolean> {
   try {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
